@@ -71,8 +71,29 @@ Additive-only schema changes per type; a breaking change means a new event type.
 | `taxonomy.concept_rejected` | taxonomy | concept_id, queue_size | identifiers |
 | `taxonomy.alias_added` | taxonomy | concept_id, scope (global/household), source | identifiers |
 | `taxonomy.correction_applied` | taxonomy | from_concept_id?, to_concept_id, corrected_string, scope | **content** — feeds write-back |
+| `inventory.scan_applied` | inventory | draft_id, created, updated, rejected | measures |
+| `inventory.item_added` | inventory | item_id, source | identifiers |
+| `inventory.item_state_changed` | inventory | item_id, from_state, to_state, trigger | identifiers |
+| `inventory.item_removed` | inventory | item_id | identifiers |
+| `inventory.refresh_prompted` | inventory | stale_item_count | measures |
+| `inventory.refresh_completed` | inventory | photo_count, duration_ms | measures — pairs with capture scan timing |
+| `recipes.recipe_imported` | recipes | recipe_id, draft_id, source_type, ingredient_count, concept_resolved_count | measures — the P0b import gate |
+| `recipes.recipe_added` | recipes | recipe_id, source | identifiers |
+| `recipes.recipe_updated` | recipes | recipe_id, fields_changed[] | identifiers |
+| `recipes.recipe_visibility_changed` | recipes | recipe_id, from, to | identifiers |
+| `recipes.recipe_removed` | recipes | recipe_id | identifiers |
+| `meal_plans.plan_generated` | meal plans | plan_id, week_start, slot_count, recipes_considered, inventory_fit_slots, algorithm_revision, duration_ms | measures |
+| `meal_plans.plan_regenerated` | meal plans | plan_id, week_start, previous_revision, new_revision, slot_count | measures |
+| `meal_plans.meal_swapped` | meal plans | plan_id, week_start, slot_date, from_recipe_id, to_recipe_id? | identifiers — P1 preference signal |
+| `meal_plans.plan_accepted` | meal plans | plan_id, week_start, revision, slot_count, swaps_before_accept, inventory_fit_slots, recipe_ids[] | measures — P0c gate; recipe IDs are event-derived |
+| `shopping.list_generated` | shopping | list_id, plan_id?, week_start?, still_needed_count, check_at_home_count, carried_manual_count | measures |
+| `shopping.list_reconciled` | shopping | list_id, plan_id, plan_revision, trigger, added, removed, moved, preserved_statuses | measures — plan-backed lists only |
+| `shopping.list_opened` | shopping | list_id, week_start?, online | identifiers — at most once per user/list/day |
+| `shopping.item_added` | shopping | list_id, week_start?, item_id, source | identifiers |
+| `shopping.item_status_changed` | shopping | list_id, week_start?, item_id, from, to, section | identifiers |
+| `shopping.item_removed` | shopping | list_id, week_start?, item_id, source | identifiers |
 
-Modules added later (`inventory`, `recipes`, `meal plans`, `shopping`) register their events here as part of their spec's §7; a PR that adds a user action without registering its events fails review (D5).
+Modules added later register their events here as part of their spec's §7; a PR that adds a user action without registering its events fails review (D5).
 
 ## 5. Flows
 
@@ -89,7 +110,7 @@ Capture confirm detects an edited match → applies the correction **synchronous
 
 ### 5.3 Preference signals (P1, designed now)
 
-Planner-facing signals — saves, swaps, skips, pins, cooked completions — are registered in the catalog when `meal plans` is specced, with payload shapes that a preference model can consume without re-processing. P0 planning-lite emits them even though nothing consumes them yet: the log starts accumulating the moat before the consumer exists.
+Planner-facing signals are registered when their user actions enter scope, with payload shapes a preference model can consume without re-processing. P0c planning-lite emits accept and swap signals even though nothing consumes them yet. Skip, pin and cooked-completion events register with the P1/P2 actions rather than fabricating interactions P0c does not offer.
 
 ## 6. API boundary
 
@@ -117,7 +138,7 @@ The P0 gate metrics this module computes, with formulas binding on the dashboard
 | Confirmation burden | mean `fields_edited + items_rejected` per `capture.draft_confirmed`; trend |
 | Review queue trend | pending queue size from `taxonomy.concept_*` net flow |
 | Import completion | `capture.draft_confirmed{kind=recipe_import}` / `draft_created{kind=recipe_import}` |
-| Weeks planned | consecutive weeks with plan-accepted events (registers with `meal plans`) |
+| Weeks planned and shopped | consecutive Monday `week_start` values where the same household has `meal_plans.plan_accepted` and `shopping.list_opened` or a shopping item interaction carrying that same `week_start` |
 | Cost per active household | MeterCounters / active households in period |
 | **Event-append failure rate** | `event_append_failed` / appends — the module's own health metric; target ≈ 0, alert on any sustained non-zero |
 

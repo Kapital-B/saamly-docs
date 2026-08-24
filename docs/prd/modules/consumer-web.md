@@ -26,7 +26,7 @@ down affects nobody's dinner.
 ## 3. Scope: Now / Next / Later
 
 - **Now (P0a):** Magic-link sign-in + local `dev-token` bypass; household create/join/invite; preferences; inventory list with manual add, edit, quick actions and undo; photo scan via file picker → presigned PUT → draft poll → review (cosmetic / material) → confirm / discard. Repo: `saamly-web`. Stack copied from `cloudmanager-web` (Vite, React, TanStack Query, Tailwind tokens, MSW).
-- **Next (P1):** Week planner, recipe import and shared list once those land on mobile; S3 + CloudFront hosting.
+- **Next (P0b):** Recipe import and household library (RFC 007) on the same capture inbox. **Later (P0c/P1):** week planner and shared shopping list; S3 + CloudFront hosting.
 - **Later (P2+):** Offline, camera capture, OAuth exchange UI.
 
 **Out of scope:** anything on `/v1/admin/*`; Entra allowlist; write paths into other households.

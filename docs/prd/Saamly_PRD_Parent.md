@@ -102,7 +102,7 @@ Kitchen awareness — not a warehouse ledger. Photo scanning produces candidate 
 
 ### 3.6 `recipes`
 
-The personal and household recipe library. Capture feels like sending content to an inbox, not completing a form. Parsing extracts title, ingredients, quantities, steps, servings, prep time and source; normalises units; resolves ingredients against `taxonomy`; flags material uncertainty. Imported recipes are private by default and retain provenance.
+The personal and household recipe library. Capture feels like sending content to an inbox, not completing a form. Parsing extracts title, ingredients, quantities, steps, servings, prep time and source; normalises units; resolves ingredients against `taxonomy`; flags material uncertainty. Imported recipes are private to the household by default (never public), with a personal owner-only option, and retain provenance.
 
 - **Now:** import via photo, pasted text and URL; parsed drafts with confirm step; personal + household library; provenance.
 - **Next:** share-sheet and voice capture; serving adaptation; substitution suggestions.
@@ -294,10 +294,10 @@ Specs live in `docs/prd/modules/`. Written in dependency order; each spec follow
 | 4 | `feedback.md` | `core` | P0a | Draft v0.1 |
 | 5 | `admin.md` | `core`, `taxonomy`, `feedback` | P0a | Draft v0.1 |
 | 6 | `inventory.md` | `capture`, `taxonomy`, `feedback` | P0a | Draft v0.1 |
-| 7 | `recipes.md` | `capture`, `taxonomy`, `feedback` | P0b | Not started |
-| 8 | `meal-plans.md` | `recipes`, `inventory`, `taxonomy` | P0c | Not started |
-| 9 | `shopping.md` | `meal plans`, `inventory` | P0c | Not started |
-| 10 | `household.md` | `core` | P0c (shared surfaces) | Not started |
+| 7 | `recipes.md` | `capture`, `taxonomy`, `feedback` | P0b | Draft v0.1 |
+| 8 | `meal-plans.md` | `recipes`, `inventory`, `taxonomy` | P0c | Draft v0.1 |
+| 9 | `shopping.md` | `meal plans`, `inventory` | P0c | Draft v0.1 |
+| 10 | `household.md` | `core` | P0c (shared surfaces) | Draft v0.1 |
 | 11 | `sharing.md` | `core`, `recipes` | P0a (invites) / P1 | Not started |
 | 12 | `cooking.md` | `meal plans`, `inventory` | P2 | Not started |
 | 13 | `retailer-catalogs.md` | `taxonomy`, `shopping` | P1 | Not started |

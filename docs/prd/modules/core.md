@@ -105,7 +105,7 @@ Admin surface (Entra JWT, allowlisted, all reads logged): `GET /v1/admin/househo
 
 **Household context resolution (for all modules):** auth middleware validates the token, loads memberships, and resolves the active household — P0: the user's household, auto-selected; `X-Household-ID` header reserved and validated for the multi-household future. Every module receives `(user, household, role)` — never re-resolves identity itself.
 
-**Internal ports (RFC §3):** `TokenVerifier`, `Mailer`, `EventSink.Append(EventEnvelope)`, `MeterSink.Increment(household, capability, cost)`, `Clock`, `IdGen`. `core` defines the sink contracts; `feedback` owns event semantics (§7).
+**Internal ports (RFC §3):** `TokenVerifier`, `Mailer`, `EventSink.Append(EventEnvelope)`, `MeterSink.Increment(household, capability, cost)`, `Clock`, `IdGen`, and the household `PurgeHook` registry used by owning modules. P0c adds `HouseholdPreferences.ListActive(household_id)`: it reads current membership rows (never pending invites) and returns one `{user_id, dietary[], allergies[], avoid_text?}` view per member; a missing preferences row returns empty fields. `meal plans` applies any member's explicit constraint to the shared plan without copying preferences into another aggregate. `core` defines the sink and preference-read contracts; `feedback` owns event semantics (§7).
 
 **Error semantics:** typed `problem+json`; auth endpoints never reveal account existence; invite errors distinguish expired/used/invalid without leaking household data.
 

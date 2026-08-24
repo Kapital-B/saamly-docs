@@ -19,7 +19,7 @@ Parent: `docs/prd/Saamly_PRD_Parent.md` v0.4 (§3.5, D4, D8) · Technical: `docs
 ## 3. Scope: Now / Next / Later
 
 - **Now (P0a):** apply confirmed scan drafts (dedup against existing items); the five confidence states; manual add/edit/remove with inline concept resolution; locations (fridge / freezer / cupboard / spice rack); qualitative quantity hints; personal items; staleness display and refresh prompts (no silent decay); offline-first local storage with outbox sync (D8).
-- **Next (P1):** "use first" surfacing in plans; mark-cooked deduction (with `cooking`); "used this" shortcuts; re-detection suppression learning (kitchen-confidence model inputs).
+- **Next (P0c–P1):** "use first" surfacing in P0c plans; then mark-cooked deduction (with `cooking`), "used this" shortcuts and re-detection suppression learning (kitchen-confidence model inputs).
 - **Later (P2+):** receipt/barcode updates; retailer-order import; expiry estimation; continuous reconciliation.
 
 **Out of scope:** precise quantities, expiry tracking, nutrition data. If a feature requires knowing *exactly how much* of something exists, it waits for the ledger we have decided not to build (strategy §12).
@@ -28,15 +28,15 @@ Parent: `docs/prd/Saamly_PRD_Parent.md` v0.4 (§3.5, D4, D8) · Technical: `docs
 
 | State | Meaning | Planner / list behaviour |
 |---|---|---|
-| **Have** | Confirmed present in sufficient quantity | Deduct from recipe requirements |
-| **Probably have** | Detected or remembered, quantity uncertain | Prefer recipes using it; shortfall goes to "check at home" |
-| **Use first** | Open, ripe or likely to expire | Boost priority in early-week meals |
+| **Have** | Confirmed present | Planner fit signal. `enough` covers a requirement; `low` stays needed; `unknown` goes to *Check at home* |
+| **Probably have** | Detected or remembered, quantity uncertain | Weak planner signal; the whole requirement goes to *Check at home* because P0 cannot calculate a partial shortfall |
+| **Use first** | Open, ripe or likely to expire | Strong early-week planner signal; shopping applies the same quantity rule as **Have** |
 | **Personal** | Owned by one member | Never consumed in shared plans without permission |
 | **Out** | Confirmed unavailable | Required quantity goes to the shopping list |
 
 **Quantities are qualitative:** `enough / low / unknown`, plus an optional free hint ("half a bag"). The UI never shows counts it cannot stand behind (brand: "never fabricate exact quantities").
 
-**Staleness is shown, not enforced:** every item carries `last_confirmed_at`; ageing items surface a gentle "Still there?" prompt, and a refresh scan is the renewal mechanism. Nothing silently changes state at P0 — silent decay erodes exactly the trust the states exist to build.
+**Staleness is shown, not enforced:** every item carries `last_confirmed_at`; ageing items surface a gentle "Still there?" prompt, and a refresh scan is the renewal mechanism. P0c introduces service setting `SAAMLY_INVENTORY_STALE_DAYS` (global, default 14), used by this prompt and computed once inside `Availability`. Nothing silently changes state at P0 — silent decay erodes exactly the trust the states exist to build.
 
 ## 5. Flows
 
@@ -52,7 +52,7 @@ Parent: `docs/prd/Saamly_PRD_Parent.md` v0.4 (§3.5, D4, D8) · Technical: `docs
 ### 5.2 Manual management
 
 - **Add:** type name → inline resolution against `taxonomy` (alias match suggests the concept; free text always works, D4) → choose location and state (default Have). Three seconds, no form.
-- **Quick actions** on any item: *Used up* (→ Out), *Still there* (re-confirm → refreshes timestamp, Probably→Have), *Use first*, *Mine* (→ Personal, owner = actor), *Not this anymore* (remove).
+- **Quick actions** on any item: *Used up* (→ Out), *Still there* (re-confirm → refreshes timestamp, Probably→Have), *Use first*, *Mine* (→ Personal, owner = actor), *Not this anymore* (remove). In P0c, successful availability-changing actions call shopping's `RefreshAvailability` directly so an active list reclassifies matching requirements; events remain records, not transport.
 - **Edit:** location, quantity hint, display name; name edits re-resolve and feed the taxonomy correction loop.
 
 ### 5.3 Offline (D8)
@@ -75,7 +75,18 @@ Consumer surface (`/v1`, household context from `core`):
 | `POST /inventory/items/:id/state` | Quick transitions: used_up · still_there · use_first · personal · shared |
 | `DELETE /inventory/items/:id` | Remove |
 
-**Internal:** `ApplyScanDraft(draft_id, edited_payload)` — invoked by `capture`'s confirm routing (by kind); `InventoryAvailability(household, concept_ids)` — the read port `meal plans` and `shopping` will use (returns states + quantity hints, never fabricated precision).
+**Internal:** `ApplyScanDraft(draft_id, edited_payload)` — invoked by `capture`'s confirm routing (by kind); `Availability(household, concept_ids)` — extended for P0c to aggregate all non-deleted shared rows per concept across locations. A single-item concept pointer is not a valid implementation.
+
+For each requested concept, `Availability` returns:
+
+| Field | Aggregation rule |
+|---|---|
+| `coverage` | `covered` when any non-stale Have/Use-first row is `enough`; otherwise `check_at_home` when any present row is Probably, `unknown` or stale; otherwise `needed` (only Out, Low or no shared row) |
+| `has_use_first` | true when any non-stale contributing row is Use first |
+| `last_confirmed_at` | newest timestamp among shared present rows; absent when none exist |
+| `evidence_count` | count of shared present rows considered; no item IDs or personal rows cross the port |
+
+Coverage precedence is `covered` → `check_at_home` → `needed`: a fresh sufficient bag in one location covers a stale or low row elsewhere; without sufficient evidence, uncertainty beats a claim of shortage. Out rows do not override present rows. Personal rows are excluded before aggregation. `meal plans` ranks from `coverage` plus `has_use_first`; `shopping` maps the same `coverage` directly to covered / *Check at home* / *Still needed*.
 
 **Offline contract:** all mutations accept idempotency keys; outbox replays hit the same endpoints; `GET ?updated_since=` returns tombstones for deleted items so devices can reconcile.
 
@@ -89,7 +100,7 @@ Consumer surface (`/v1`, household context from `core`):
 
 | Metric (PRD §8) | Source | P0 target |
 |---|---|---|
-| **Scan+confirm faster than manual (P0a gate)** | `inventory.refresh_completed` duration vs timed manual baseline | Faster — and both members agree |
+| **Scan+confirm faster than manual (P0a gate)** | `capture.scan_session_completed.total_ms` vs timed manual baseline; `inventory.refresh_completed` is the paired inventory record | Faster — and both members agree |
 | Manual adds per week | `inventory.item_added{source=manual}` | Measured; high rate signals scans are missing things |
 | Post-scan early-outs | `have→out` transitions within 3 days of a scan | Low; spikes mean hallucinated items got through confirm |
 | Staleness health | distribution of `last_confirmed_at`; `refresh_prompted` response rate | Refresh scans happening at least weekly during dogfood |
