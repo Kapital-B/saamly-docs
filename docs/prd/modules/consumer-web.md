@@ -28,7 +28,7 @@ down affects nobody's dinner.
 - **Now (P0a):** Magic-link sign-in + local `dev-token` bypass; household create/join/invite; preferences; inventory list with manual add, edit, quick actions and undo; photo scan via file picker → presigned PUT → draft poll → review (cosmetic / material) → confirm / discard. Repo: `saamly-web`. Stack copied from `cloudmanager-web` (Vite, React, TanStack Query, Tailwind tokens, MSW).
 - **Implemented (P0b):** Recipe import and household library (RFC 007) on the same capture inbox.
 - **Implemented (P0c web parity):** Online week planner and shared shopping list (RFC 008 §15): current/next week, generate, swap, regenerate, accept, list sections and item actions. **Later:** S3 + CloudFront hosting.
-- **Later (P2+):** Offline, camera capture, OAuth exchange UI.
+- **Later (P2+):** Offline, live camera preview, OAuth exchange UI. Phone camera capture through the browser's file input is implemented; local signed uploads use a same-origin Vite proxy for LAN clients.
 
 **Out of scope:** anything on `/v1/admin/*`; Entra allowlist; write paths into other households.
 
