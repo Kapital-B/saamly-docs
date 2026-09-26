@@ -24,15 +24,16 @@ This RFC defines the starting technical shape of Saamly: repositories, languages
 
 ## 2. Repository strategy: polyrepo
 
-Five repositories. The current `saamly` repository becomes documentation-only.
+Six repositories. `saamly-docs` owns product and technical documentation, and `saamly-local` owns the persistent local infrastructure added after the initial repository split.
 
 | Repo | Contents | Stack |
 |---|---|---|
-| `saamly` | Documentation only: strategy, PRD, module specs, RFCs (this file) | Markdown |
+| `saamly-docs` | Documentation only: strategy, PRD, module specs, RFCs (this file), [local environment specification](../specs/local-development-environment.md) | Markdown |
 | `saamly-service` | Back-end API + workers; OpenAPI specs (`api/`); back-end Terraform (`infra/`) | Go, Terraform |
 | `saamly-mobile` | Consumer mobile app | Dart / Flutter |
 | `saamly-web` | Consumer web app (P0 parity with mobile, for dogfood/testing) | React + TypeScript, Vite |
 | `saamly-admin` | Internal admin web app + static-hosting Terraform (`infra/`) | React + TypeScript, Terraform |
+| `saamly-local` | Persistent Floci and local AWS resource browser | Docker Compose |
 
 Principles:
 
@@ -334,7 +335,7 @@ One workflow per repo; each is self-contained.
 | `saamly-service` | `gofumpt -l`, `golangci-lint run`, `go test -race ./...`, `govulncheck`, `spectral lint api/`, `terraform fmt -check` / `validate` / `tflint` / `plan` | deploy `api`/`worker` to dev Lambda; `terraform apply` (dev) |
 | `saamly-mobile` | `dart format --set-exit-if-changed`, `flutter analyze`, `flutter test` | manual during dogfood (APK sideload / TestFlight); automated distribution is a P1 task |
 | `saamly-admin` | `tsc --noEmit`, `eslint`, `prettier --check`, `vitest run`, build, `terraform plan` | build → sync to S3 → CloudFront invalidation |
-| `saamly` (docs) | optional: markdownlint, link check | — |
+| `saamly-docs` | optional: markdownlint, link check | — |
 
 Branch protection in every code repo: PR + green checks required. A contract change therefore lands as: service PR (spec + handlers) → tag → client PRs with vendored spec bump (§6).
 
